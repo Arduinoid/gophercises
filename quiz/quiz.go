@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -17,6 +18,14 @@ type Problem struct {
 }
 
 func main() {
+
+	var seconds int
+	if len(os.Args[1:]) != 0 {
+		arg := os.Args[1]
+		seconds, _ = strconv.Atoi(arg)
+	} else {
+		seconds = 30
+	}
 
 	filename := "./problems.csv"
 	answeredCorrectly := 0
@@ -41,7 +50,7 @@ func main() {
 	fmt.Println("Press Enter to begin")
 	reader.ReadString('\n')
 
-	countDown := time.NewTimer(30 * time.Second)
+	countDown := time.NewTimer(time.Duration(seconds) * time.Second)
 	go func() {
 		<-countDown.C
 		fmt.Println("Times up!")
