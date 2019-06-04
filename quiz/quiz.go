@@ -4,9 +4,9 @@ package main
 import (
 	"bufio"
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -20,14 +20,12 @@ type Problem struct {
 func main() {
 
 	var seconds int
-	if len(os.Args[1:]) != 0 {
-		arg := os.Args[1]
-		seconds, _ = strconv.Atoi(arg)
-	} else {
-		seconds = 30
-	}
+	var filename string
 
-	filename := "./problems.csv"
+	flag.IntVar(&seconds, "time-limit", 30, "sets the time limit of the quiz")
+	flag.StringVar(&filename, "path", "./problems.csv", "location of question and answer csv file")
+	flag.Parse()
+
 	answeredCorrectly := 0
 	// numberOfQuestions := 0
 
@@ -65,9 +63,8 @@ func main() {
 		}
 		fmt.Println("what is the answer to: " + data.Question + " ?")
 		answer, _ := reader.ReadString('\n')
-		answer = strings.Trim(answer, "\n\r\t")
 
-		if strings.Compare(data.Answer, answer) == 0 {
+		if strings.Compare(cleanString(data.Answer), cleanString(answer)) == 0 {
 			answeredCorrectly++
 			fmt.Printf("Correct!\n\n")
 		} else {
@@ -80,4 +77,8 @@ func main() {
 
 func result(correct int, questions int) {
 	fmt.Printf("You answered %d out of %d correct", correct, questions)
+}
+
+func cleanString(s string) string {
+	return strings.ToLower(strings.TrimSpace(s))
 }
