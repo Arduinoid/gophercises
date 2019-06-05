@@ -27,3 +27,25 @@ func TestCleanString(t *testing.T) {
 		}
 	}
 }
+
+func TestEvaluateAnswer(t *testing.T) {
+
+	count := 0
+
+	type testUserAnswer struct {
+		Problem
+		Input string
+	}
+	tests := []testUserAnswer{
+		{Problem{Question: "1", Answer: "One"}, "ONE"},
+		{Problem{Question: "2", Answer: "two"}, "Two "},
+		{Problem{Question: "3", Answer: "thRee"}, "  THree"},
+	}
+
+	for tally, test := range tests {
+		test.Problem.evaluateAnswer(&count, test.Input)
+		if count != tally+1 {
+			t.Errorf("count = %v expected count = %v", count, tally)
+		}
+	}
+}
