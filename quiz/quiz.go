@@ -50,11 +50,11 @@ func main() {
 	}
 
 	// initialize the prompt of the quiz and wait for user input to begin
-	reader := bufio.NewReader(os.Stdin)
+	inputReader := bufio.NewReader(os.Stdin)
 	fmt.Println("--- Quiz ---")
 	fmt.Println("------------")
 	fmt.Println("Press Enter to begin")
-	reader.ReadString('\n')
+	inputReader.ReadString('\n')
 
 	// setup and start the count down for the quiz
 	countDown := time.NewTimer(time.Duration(seconds) * time.Second)
@@ -67,14 +67,14 @@ func main() {
 
 	// read through the various sets of questions and answers and check for correctness
 	for _, line := range lines {
-		data := Problem{
+		p := Problem{
 			Question: line[0],
 			Answer:   line[1],
 		}
-		fmt.Println("what is the answer to: " + data.Question + " ?")
-		answer, _ := reader.ReadString('\n')
 
-		evaluateAnswer(&answeredCorrectly, data, answer)
+		answer := p.getAnswerFromUser(inputReader)
+
+		p.evaluateAnswer(&answeredCorrectly, answer)
 	}
 
 	result(answeredCorrectly, len(lines))
@@ -100,11 +100,17 @@ func randomizeProblems(p [][]string) [][]string {
 }
 
 // evaluateAnswer takes a problem type and will check a given answer and if it matches will increment a count pointer
-func evaluateAnswer(count *int, problem Problem, userAnswer string) {
-	if strings.Compare(cleanString(problem.Answer), cleanString(userAnswer)) == 0 {
+func (p Problem) evaluateAnswer(count *int, userAnswer string) {
+	if strings.Compare(cleanString(p.Answer), cleanString(userAnswer)) == 0 {
 		*count++
 		fmt.Printf("Correct!\n\n")
 	} else {
-		fmt.Printf("Wrong :(\n-- correct answer: %s \n\n", problem.Answer)
+		fmt.Printf("Wrong :(\n-- correct answer: %s \n\n", p.Answer)
 	}
+}
+
+func (p Problem) getAnswerFromUser(r *bufio.Reader) string {
+	fmt.Println("what is the answer to: " + p.Question + " ?")
+	answer, _ := r.ReadString('\n')
+	return answer
 }
