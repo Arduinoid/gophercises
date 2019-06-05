@@ -18,6 +18,11 @@ type Problem struct {
 	Answer   string
 }
 
+// MyReader will allow for mocking ReadString method
+type MyReader interface {
+	ReadString(delim byte) (string, error)
+}
+
 func main() {
 
 	var seconds int
@@ -109,7 +114,7 @@ func (p Problem) evaluateAnswer(count *int, userAnswer string) {
 	}
 }
 
-func (p Problem) getAnswerFromUser(r *bufio.Reader) string {
+func (p Problem) getAnswerFromUser(r MyReader) string {
 	fmt.Println("what is the answer to: " + p.Question + " ?")
 	answer, _ := r.ReadString('\n')
 	return answer

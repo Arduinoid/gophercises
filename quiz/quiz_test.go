@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"io"
+	"testing"
+)
 
 type testStrings struct {
 	input    string
@@ -47,5 +50,30 @@ func TestEvaluateAnswer(t *testing.T) {
 		if count != tally+1 {
 			t.Errorf("count = %v expected count = %v", count, tally)
 		}
+	}
+}
+
+type MockReader struct {
+	io.Reader
+	testMessage string
+}
+
+func (mr *MockReader) ReadString(delim byte) (string, error) {
+	return "Good to Go!", nil
+}
+
+func TestGetAnswerFromUser(t *testing.T) {
+
+	p := Problem{
+		Question: "1",
+		Answer:   "One",
+	}
+
+	r := new(MockReader)
+	r.testMessage = "Good to Go!"
+	answer := p.getAnswerFromUser(r)
+
+	if answer != r.testMessage {
+		t.Errorf("got '%s' expected '%s'", answer, r.testMessage)
 	}
 }
