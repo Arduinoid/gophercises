@@ -60,6 +60,7 @@ func main() {
 // result takes the number of correct answers and the total number of questions and outputs a message to the console
 func (ps *ProblemSet) result() {
 	fmt.Printf("You answered %d out of %d correct", ps.correctCount, len(ps.Problems))
+	os.Exit(0)
 }
 
 // cleanString removes trailing and leading whitespace
@@ -108,10 +109,16 @@ func (ps *ProblemSet) Run(reader MyReader) {
 	fmt.Println("Press Enter to begin")
 	reader.ReadString('\n')
 
-	ps.startCountDown()
+	done := make(chan bool)
+	ps.startCountDown(done)
 	for _, problem := range ps.Problems {
 		answer := problem.getAnswerFromUser(reader)
 		problem.evaluateAnswer(&ps.correctCount, answer)
+		go func() {
+			if <-done {
+				ps.result()
+			}
+		}()
 	}
 	ps.result()
 }
@@ -144,13 +151,13 @@ func (ps *ProblemSet) getProblemsFromCSV(n string) error {
 	return nil
 }
 
-func (ps *ProblemSet) startCountDown() {
+func (ps *ProblemSet) startCountDown(c chan bool) {
 	// setup and start the count down for the quiz
 	countDown := time.NewTimer(time.Duration(ps.timeLimit) * time.Second)
 	go func() {
 		<-countDown.C
 		fmt.Println("Times up!")
+		c <- true
 		ps.result()
-		os.Exit(0)
 	}()
 }
