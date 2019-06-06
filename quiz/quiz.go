@@ -24,6 +24,8 @@ type Problems []Problem
 // ProblemSet just embeds the Problems slice type to be able to hang methods off of
 type ProblemSet struct {
 	Problems
+	correctCount, timeLimit int
+	random                  bool
 }
 
 // MyReader will allow for mocking ReadString method
@@ -31,69 +33,33 @@ type MyReader interface {
 	ReadString(delim byte) (string, error)
 }
 
-func main() {
+var ps ProblemSet
 
+func init() {
 	var seconds int
 	var filename string
 	var randomize bool
-	var ps ProblemSet
-
-	answeredCorrectly := 0
 
 	flag.IntVar(&seconds, "time-limit", 30, "sets the time limit of the quiz")
 	flag.StringVar(&filename, "path", "./problems.csv", "location of question and answer csv file")
 	flag.BoolVar(&randomize, "randomize", false, "Randomize the order of questions")
 	flag.Parse()
 
-	// open file
-	f, err := os.Open(filename)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
+	// get the and populate the problem set
+	ps.getProblemsFromCSV(filename)
+	ps.random = randomize
+	ps.timeLimit = seconds
+}
 
-	// read in file
-	lines, err := csv.NewReader(f).ReadAll()
-	if err != nil {
-		panic(err)
-	}
+func main() {
 
-	// initialize the prompt of the quiz and wait for user input to begin
-	inputReader := bufio.NewReader(os.Stdin)
-	fmt.Println("--- Quiz ---")
-	fmt.Println("------------")
-	fmt.Println("Press Enter to begin")
-	inputReader.ReadString('\n')
-
-	// setup and start the count down for the quiz
-	countDown := time.NewTimer(time.Duration(seconds) * time.Second)
-	go func() {
-		<-countDown.C
-		fmt.Println("Times up!")
-		result(answeredCorrectly, len(lines))
-		os.Exit(0)
-	}()
-
-	// build out the problem set from the given csv output
-	for _, line := range lines {
-		p := newProblem(line)
-		ps.addProblem(p)
-	}
-
-	// if randomize flag is set then shuffle the problems
-	if randomize {
-		ps.randomizeProblems()
-	}
-
-	// prompt user for answer and check if correct based on problem answer
-	ps.Run(&answeredCorrectly, inputReader)
-
-	result(answeredCorrectly, len(ps.Problems))
+	// Run the problem set and show the results when finished or time limit occurs
+	ps.Run(bufio.NewReader(os.Stdin))
 }
 
 // result takes the number of correct answers and the total number of questions and outputs a message to the console
-func result(correct int, questions int) {
-	fmt.Printf("You answered %d out of %d correct", correct, questions)
+func (ps *ProblemSet) result() {
+	fmt.Printf("You answered %d out of %d correct", ps.correctCount, len(ps.Problems))
 }
 
 // cleanString removes trailing and leading whitespace
@@ -119,6 +85,7 @@ func (p Problem) evaluateAnswer(count *int, userAnswer string) {
 	}
 }
 
+// getAnswerFromUser will ask the user the question from the problem and return the users answer
 func (p Problem) getAnswerFromUser(r MyReader) string {
 	fmt.Println("what is the answer to: " + p.Question + " ?")
 	answer, _ := r.ReadString('\n')
@@ -131,14 +98,59 @@ func (ps *ProblemSet) addProblem(p Problem) {
 }
 
 // Run will begin asking the user for answers the the given problem set
-func (ps *ProblemSet) Run(count *int, reader MyReader) {
+func (ps *ProblemSet) Run(reader MyReader) {
+	if ps.random {
+		ps.randomizeProblems()
+	}
+
+	fmt.Println("--- Quiz ---")
+	fmt.Println("------------")
+	fmt.Println("Press Enter to begin")
+	reader.ReadString('\n')
+
+	ps.startCountDown()
 	for _, problem := range ps.Problems {
 		answer := problem.getAnswerFromUser(reader)
-		problem.evaluateAnswer(count, answer)
+		problem.evaluateAnswer(&ps.correctCount, answer)
 	}
+	ps.result()
 }
 
 // newProblem creates a problem type from a line or string slice
 func newProblem(l []string) Problem {
 	return Problem{Question: l[0], Answer: l[1]}
+}
+
+func (ps *ProblemSet) getProblemsFromCSV(n string) error {
+	// open file
+	f, err := os.Open(n)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	// read in file
+	lines, err := csv.NewReader(f).ReadAll()
+	if err != nil {
+		return err
+	}
+
+	// build out the problem set from the given csv output
+	for _, line := range lines {
+		p := newProblem(line)
+		ps.addProblem(p)
+	}
+
+	return nil
+}
+
+func (ps *ProblemSet) startCountDown() {
+	// setup and start the count down for the quiz
+	countDown := time.NewTimer(time.Duration(ps.timeLimit) * time.Second)
+	go func() {
+		<-countDown.C
+		fmt.Println("Times up!")
+		ps.result()
+		os.Exit(0)
+	}()
 }
