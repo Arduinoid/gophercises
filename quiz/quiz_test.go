@@ -33,22 +33,39 @@ func TestCleanString(t *testing.T) {
 
 func TestEvaluateAnswer(t *testing.T) {
 
+	// setup
 	count := 0
 
 	type testUserAnswer struct {
 		Problem
 		Input string
 	}
-	tests := []testUserAnswer{
+	correctAnswer := []testUserAnswer{
 		{Problem{Question: "1", Answer: "One"}, "ONE"},
 		{Problem{Question: "2", Answer: "two"}, "Two "},
 		{Problem{Question: "3", Answer: "thRee"}, "  THree"},
 	}
 
-	for tally, test := range tests {
+	wrongAnswer := []testUserAnswer{
+		{Problem{Question: "1", Answer: "One"}, "  five"},
+		{Problem{Question: "2", Answer: "two"}, "Four "},
+		{Problem{Question: "3", Answer: "thRee"}, " nine "},
+	}
+
+	// assert
+	for tally, test := range correctAnswer {
 		test.Problem.evaluateAnswer(&count, test.Input)
 		if count != tally+1 {
-			t.Errorf("count = %v expected count = %v", count, tally)
+			t.Errorf("correct answer count got %v expected count = %v", count, tally)
+		}
+	}
+
+	// reset count for next test
+	count = 0
+	for _, test := range wrongAnswer {
+		test.Problem.evaluateAnswer(&count, test.Input)
+		if count != 0 {
+			t.Errorf("for wrong answer expected 0 correct answers, but got %v correct", count)
 		}
 	}
 }

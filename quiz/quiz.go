@@ -18,6 +18,14 @@ type Problem struct {
 	Answer   string
 }
 
+// Problems is a slice of Problem type
+type Problems []Problem
+
+// ProblemSet just embeds the Problems slice type to be able to hang methods off of
+type ProblemSet struct {
+	Problems
+}
+
 // MyReader will allow for mocking ReadString method
 type MyReader interface {
 	ReadString(delim byte) (string, error)
@@ -28,6 +36,7 @@ func main() {
 	var seconds int
 	var filename string
 	var randomize bool
+	var ps ProblemSet
 
 	answeredCorrectly := 0
 
@@ -49,11 +58,6 @@ func main() {
 		panic(err)
 	}
 
-	// if randomize flag is set then shuffle the problems
-	if randomize {
-		lines = randomizeProblems(lines)
-	}
-
 	// initialize the prompt of the quiz and wait for user input to begin
 	inputReader := bufio.NewReader(os.Stdin)
 	fmt.Println("--- Quiz ---")
@@ -70,19 +74,21 @@ func main() {
 		os.Exit(0)
 	}()
 
-	// read through the various sets of questions and answers and check for correctness
+	// build out the problem set from the given csv output
 	for _, line := range lines {
-		p := Problem{
-			Question: line[0],
-			Answer:   line[1],
-		}
-
-		answer := p.getAnswerFromUser(inputReader)
-
-		p.evaluateAnswer(&answeredCorrectly, answer)
+		p := newProblem(line)
+		ps.addProblem(p)
 	}
 
-	result(answeredCorrectly, len(lines))
+	// if randomize flag is set then shuffle the problems
+	if randomize {
+		ps.randomizeProblems()
+	}
+
+	// prompt user for answer and check if correct based on problem answer
+	ps.Run(&answeredCorrectly, inputReader)
+
+	result(answeredCorrectly, len(ps.Problems))
 }
 
 // result takes the number of correct answers and the total number of questions and outputs a message to the console
@@ -96,12 +102,11 @@ func cleanString(s string) string {
 }
 
 // randomizeProblems shuffles a slice of slices contianing question and answer strings
-func randomizeProblems(p [][]string) [][]string {
+func (ps *ProblemSet) randomizeProblems() {
 	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(p), func(i int, j int) {
-		p[i], p[j] = p[j], p[i]
+	rand.Shuffle(len(ps.Problems), func(i int, j int) {
+		ps.Problems[i], ps.Problems[j] = ps.Problems[j], ps.Problems[i]
 	})
-	return p
 }
 
 // evaluateAnswer takes a problem type and will check a given answer and if it matches will increment a count pointer
@@ -118,4 +123,22 @@ func (p Problem) getAnswerFromUser(r MyReader) string {
 	fmt.Println("what is the answer to: " + p.Question + " ?")
 	answer, _ := r.ReadString('\n')
 	return answer
+}
+
+// addProblem appends a problem to the problem set
+func (ps *ProblemSet) addProblem(p Problem) {
+	ps.Problems = append(ps.Problems, p)
+}
+
+// Run will begin asking the user for answers the the given problem set
+func (ps *ProblemSet) Run(count *int, reader MyReader) {
+	for _, problem := range ps.Problems {
+		answer := problem.getAnswerFromUser(reader)
+		problem.evaluateAnswer(count, answer)
+	}
+}
+
+// newProblem creates a problem type from a line or string slice
+func newProblem(l []string) Problem {
+	return Problem{Question: l[0], Answer: l[1]}
 }
