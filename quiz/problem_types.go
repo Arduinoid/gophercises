@@ -40,10 +40,10 @@ func (p Problem) evaluateAnswer(count *int, userAnswer string) {
 }
 
 // getAnswerFromUser will ask the user the question from the problem and return the users answer
-func (p Problem) getAnswerFromUser(r MyReader) string {
+func (p Problem) getAnswerFromUser(r MyReader, c chan string) {
 	print.Println("what is the answer to: " + p.Question + " ?")
 	answer, _ := r.ReadString('\n')
-	return answer
+	c <- answer
 }
 
 // addProblem appends a problem to the problem set

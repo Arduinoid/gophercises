@@ -24,17 +24,22 @@ func (q *Quiz) Run(reader MyReader) {
 	reader.ReadString('\n')
 
 	done := make(chan bool)
-	q.startCountDown(done)
+	answer := make(chan string)
+	go q.startCountDown(done)
+
+	defer q.result()
+
+Loop:
 	for _, problem := range q.ProblemSet.Problems {
-		answer := problem.getAnswerFromUser(reader)
-		problem.evaluateAnswer(&q.ProblemSet.correctCount, answer)
-		go func() {
-			if <-done {
-				q.result()
-			}
-		}()
+		go problem.getAnswerFromUser(reader, answer)
+
+		select {
+		case <-done:
+			break Loop
+		case a := <-answer:
+			problem.evaluateAnswer(&q.ProblemSet.correctCount, a)
+		}
 	}
-	q.result()
 }
 
 // result takes the number of correct answers and the total number of questions and outputs a message to the console
@@ -46,10 +51,8 @@ func (q *Quiz) result() {
 func (q *Quiz) startCountDown(c chan bool) {
 	// setup and start the count down for the quiz
 	countDown := time.NewTimer(time.Duration(ps.timeLimit) * time.Second)
-	go func() {
-		<-countDown.C
-		print.Println("Times up!")
-		c <- true
-		q.result()
-	}()
+
+	<-countDown.C
+	print.Println("Times up!")
+	c <- true
 }
