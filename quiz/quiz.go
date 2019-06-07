@@ -28,10 +28,37 @@ type ProblemSet struct {
 	random                  bool
 }
 
+// Quiz will be used to provide dependencies to run through propblem set
+type Quiz struct {
+	ProblemSet
+	reader  MyReader
+	printer MyPrinter
+}
+
 // MyReader will allow for mocking ReadString method
 type MyReader interface {
 	ReadString(delim byte) (string, error)
 }
+
+// MyPrinter allows the fmt printer to be mocked
+type MyPrinter interface {
+	Printf(format string, a ...interface{}) (n int, err error)
+	Println(a ...interface{}) (n int, err error)
+}
+
+type printer struct{}
+
+func (p printer) Printf(format string, a ...interface{}) (n int, err error) {
+	return fmt.Printf(format, a...)
+}
+
+func (p printer) Println(a ...interface{}) (n int, err error) {
+	return fmt.Println(a...)
+}
+
+var q Quiz
+
+var print printer
 
 var ps ProblemSet
 
@@ -49,17 +76,20 @@ func init() {
 	ps.getProblemsFromCSV(filename)
 	ps.random = randomize
 	ps.timeLimit = seconds
+
+	q.ProblemSet = ps
+	q.printer = print
 }
 
 func main() {
 
 	// Run the problem set and show the results when finished or time limit occurs
-	ps.Run(bufio.NewReader(os.Stdin))
+	q.Run(bufio.NewReader(os.Stdin))
 }
 
 // result takes the number of correct answers and the total number of questions and outputs a message to the console
-func (ps *ProblemSet) result() {
-	fmt.Printf("You answered %d out of %d correct", ps.correctCount, len(ps.Problems))
+func (q *Quiz) result() {
+	q.printer.Printf("You answered %d out of %d correct", q.ProblemSet.correctCount, len(q.ProblemSet.Problems))
 	os.Exit(0)
 }
 
@@ -80,15 +110,15 @@ func (ps *ProblemSet) randomizeProblems() {
 func (p Problem) evaluateAnswer(count *int, userAnswer string) {
 	if strings.Compare(cleanString(p.Answer), cleanString(userAnswer)) == 0 {
 		*count++
-		fmt.Printf("Correct!\n\n")
+		print.Printf("Correct!\n\n")
 	} else {
-		fmt.Printf("Wrong :(\n-- correct answer: %s \n\n", p.Answer)
+		print.Printf("Wrong :(\n-- correct answer: %s \n\n", p.Answer)
 	}
 }
 
 // getAnswerFromUser will ask the user the question from the problem and return the users answer
 func (p Problem) getAnswerFromUser(r MyReader) string {
-	fmt.Println("what is the answer to: " + p.Question + " ?")
+	print.Println("what is the answer to: " + p.Question + " ?")
 	answer, _ := r.ReadString('\n')
 	return answer
 }
@@ -99,28 +129,28 @@ func (ps *ProblemSet) addProblem(p Problem) {
 }
 
 // Run will begin asking the user for answers the the given problem set
-func (ps *ProblemSet) Run(reader MyReader) {
-	if ps.random {
-		ps.randomizeProblems()
+func (q *Quiz) Run(reader MyReader) {
+	if q.ProblemSet.random {
+		q.ProblemSet.randomizeProblems()
 	}
 
-	fmt.Println("--- Quiz ---")
-	fmt.Println("------------")
-	fmt.Println("Press Enter to begin")
+	q.printer.Println("--- Quiz ---")
+	q.printer.Println("------------")
+	q.printer.Println("Press Enter to begin")
 	reader.ReadString('\n')
 
 	done := make(chan bool)
-	ps.startCountDown(done)
-	for _, problem := range ps.Problems {
+	q.startCountDown(done)
+	for _, problem := range q.ProblemSet.Problems {
 		answer := problem.getAnswerFromUser(reader)
-		problem.evaluateAnswer(&ps.correctCount, answer)
+		problem.evaluateAnswer(&q.ProblemSet.correctCount, answer)
 		go func() {
 			if <-done {
-				ps.result()
+				q.result()
 			}
 		}()
 	}
-	ps.result()
+	q.result()
 }
 
 // newProblem creates a problem type from a line or string slice
@@ -151,13 +181,13 @@ func (ps *ProblemSet) getProblemsFromCSV(n string) error {
 	return nil
 }
 
-func (ps *ProblemSet) startCountDown(c chan bool) {
+func (q *Quiz) startCountDown(c chan bool) {
 	// setup and start the count down for the quiz
 	countDown := time.NewTimer(time.Duration(ps.timeLimit) * time.Second)
 	go func() {
 		<-countDown.C
-		fmt.Println("Times up!")
+		print.Println("Times up!")
 		c <- true
-		ps.result()
+		q.result()
 	}()
 }
