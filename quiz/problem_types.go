@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"math/rand"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -27,23 +26,6 @@ func (ps *ProblemSet) randomizeProblems() {
 	rand.Shuffle(len(ps.Problems), func(i int, j int) {
 		ps.Problems[i], ps.Problems[j] = ps.Problems[j], ps.Problems[i]
 	})
-}
-
-// evaluateAnswer takes a problem type and will check a given answer and if it matches will increment a count pointer
-func (p Problem) evaluateAnswer(count *int, userAnswer string) {
-	if strings.Compare(cleanString(p.Answer), cleanString(userAnswer)) == 0 {
-		*count++
-		print.Printf("Correct!\n\n")
-	} else {
-		print.Printf("Wrong :(\n-- correct answer: %s \n\n", p.Answer)
-	}
-}
-
-// getAnswerFromUser will ask the user the question from the problem and return the users answer
-func (p Problem) getAnswerFromUser(r MyReader, c chan string) {
-	print.Println("what is the answer to: " + p.Question + " ?")
-	answer, _ := r.ReadString('\n')
-	c <- answer
 }
 
 // addProblem appends a problem to the problem set
@@ -72,8 +54,7 @@ func (ps *ProblemSet) getProblemsFromCSV(n string) error {
 
 	// build out the problem set from the given csv output
 	for _, line := range lines {
-		p := newProblem(line)
-		ps.addProblem(p)
+		ps.addProblem(newProblem(line))
 	}
 
 	return nil

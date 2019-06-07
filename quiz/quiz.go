@@ -10,9 +10,6 @@ import (
 )
 
 var q Quiz
-
-var print printer
-
 var ps ProblemSet
 
 func init() {
@@ -26,19 +23,23 @@ func init() {
 	flag.Parse()
 
 	// get the and populate the problem set
-	ps.getProblemsFromCSV(filename)
+	err := ps.getProblemsFromCSV(filename)
+	if err != nil {
+		os.Exit(1)
+	}
 	ps.random = randomize
 	ps.timeLimit = seconds
 
 	q.ProblemSet = ps
-	q.printer = print
+	q.printer = new(printer)
+	q.reader = bufio.NewReader(os.Stdin)
 }
 
 // main entry point to run program
 func main() {
 
 	// Run the problem set and show the results when finished or time limit occurs
-	q.Run(bufio.NewReader(os.Stdin))
+	q.Run()
 }
 
 // ---------------------------
