@@ -51,7 +51,7 @@ func (q *Quiz) result() {
 
 func (q *Quiz) startCountDown(c chan bool) {
 	// setup and start the count down for the quiz
-	countDown := time.NewTimer(time.Duration(ps.timeLimit) * time.Second)
+	countDown := time.NewTimer(time.Duration(q.ProblemSet.timeLimit) * time.Second)
 
 	<-countDown.C
 	q.printer.Println("Times up!")

@@ -10,34 +10,33 @@ import (
 )
 
 var q Quiz
-var ps ProblemSet
 
 func init() {
-	var seconds int
-	var filename string
-	var randomize bool
-
-	flag.IntVar(&seconds, "time-limit", 30, "sets the time limit of the quiz")
-	flag.StringVar(&filename, "path", "./problems.csv", "location of question and answer csv file")
-	flag.BoolVar(&randomize, "randomize", false, "Randomize the order of questions")
+	// catpure CLI flags to configure quiz
+	timeLimit := flag.Int("time-limit", 30, "sets the time limit of the quiz")
+	randomize := flag.Bool("randomize", false, "Randomize the order of questions")
+	filename := flag.String("path", "./problems.csv", "location of question and answer csv file")
 	flag.Parse()
 
+	// basic config for the quiz problem set
+	q.ProblemSet = ProblemSet{
+		timeLimit: *timeLimit,
+		random:    *randomize,
+	}
+	// setup input and output dependencies
+	q.printer = new(printer)
+	q.reader = bufio.NewReader(os.Stdin)
+
 	// get the and populate the problem set
-	err := ps.getProblemsFromCSV(filename)
+	err := q.ProblemSet.getProblemsFromCSV(*filename)
 	if err != nil {
 		os.Exit(1)
 	}
-	ps.random = randomize
-	ps.timeLimit = seconds
 
-	q.ProblemSet = ps
-	q.printer = new(printer)
-	q.reader = bufio.NewReader(os.Stdin)
 }
 
 // main entry point to run program
 func main() {
-
 	// Run the problem set and show the results when finished or time limit occurs
 	q.Run()
 }
