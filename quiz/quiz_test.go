@@ -10,6 +10,30 @@ type testStrings struct {
 	expected string
 }
 
+var mockPrinter interface {
+	Println(s ...string)
+	Printf(s string, i ...interface{})
+}
+
+type testPrinter struct {
+	fstring string
+	values  []interface{}
+	called  bool
+}
+
+func (p *testPrinter) Println(a ...interface{}) (int, error) {
+	p.values = append(p.values, a...)
+	p.called = true
+	return 0, nil
+}
+
+func (p *testPrinter) Printf(s string, i ...interface{}) (int, error) {
+	p.fstring = s
+	p.values = append(p.values, i...)
+	p.called = true
+	return 0, nil
+}
+
 var tests = []testStrings{
 	testStrings{" TesTIng  ", "testing"},
 	testStrings{"ANOTHER TEST", "another test"},
@@ -34,12 +58,14 @@ func TestCleanString(t *testing.T) {
 func TestEvaluateAnswer(t *testing.T) {
 
 	// setup
-	count := 0
+	q.printer = new(testPrinter)
+	q.ProblemSet = ProblemSet{correctCount: 0}
 
 	type testUserAnswer struct {
 		Problem
 		Input string
 	}
+
 	correctAnswer := []testUserAnswer{
 		{Problem{Question: "1", Answer: "One"}, "ONE"},
 		{Problem{Question: "2", Answer: "two"}, "Two "},
@@ -54,18 +80,18 @@ func TestEvaluateAnswer(t *testing.T) {
 
 	// assert
 	for tally, test := range correctAnswer {
-		test.Problem.evaluateAnswer(&count, test.Input)
-		if count != tally+1 {
-			t.Errorf("correct answer count got %v expected count = %v", count, tally)
+		q.evaluateAnswer(test.Problem, test.Input)
+		if q.correctCount != tally+1 {
+			t.Errorf("correct answer count got %v expected count = %v", q.ProblemSet.correctCount, tally)
 		}
 	}
 
 	// reset count for next test
-	count = 0
+	q.ProblemSet.correctCount = 0
 	for _, test := range wrongAnswer {
-		test.Problem.evaluateAnswer(&count, test.Input)
-		if count != 0 {
-			t.Errorf("for wrong answer expected 0 correct answers, but got %v correct", count)
+		q.evaluateAnswer(test.Problem, test.Input)
+		if q.correctCount != 0 {
+			t.Errorf("for wrong answer expected 0 correct answers, but got %v correct", q.ProblemSet.correctCount)
 		}
 	}
 }
@@ -76,7 +102,7 @@ type MockReader struct {
 }
 
 func (mr *MockReader) ReadString(delim byte) (string, error) {
-	return "Good to Go!", nil
+	return mr.testMessage, nil
 }
 
 func TestGetAnswerFromUser(t *testing.T) {
@@ -85,12 +111,13 @@ func TestGetAnswerFromUser(t *testing.T) {
 		Question: "1",
 		Answer:   "One",
 	}
+	a := make(chan string)
+	msg := "Good to Go!\n"
+	q.reader = &MockReader{testMessage: msg}
+	go q.getAnswerFromUser(p, a)
+	got := <-a
 
-	r := new(MockReader)
-	r.testMessage = "Good to Go!"
-	answer := p.getAnswerFromUser(r)
-
-	if answer != r.testMessage {
-		t.Errorf("got '%s' expected '%s'", answer, r.testMessage)
+	if msg != got {
+		t.Errorf("got '%s' expected '%s'", got, msg)
 	}
 }
